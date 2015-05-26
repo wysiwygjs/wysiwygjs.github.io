@@ -1,4 +1,15 @@
-(function(window, document, $, undefined){
+(function(factory) {
+    'use strict';
+    if (typeof define === 'function' && define.amd) {
+        define(['jquery'], function($){
+            return factory(window, document, $);
+        });
+    } else if (typeof exports !== 'undefined') {
+        module.exports = factory(window, document, require('jquery'));
+    } else {
+        return factory(window, document, jQuery);
+    }
+})(function(window, document, $){
     'use strict';
 
     // http://stackoverflow.com/questions/17242144/javascript-convert-hsb-hsv-color-to-rgb-accurately
@@ -610,8 +621,11 @@
                                     return false; // break
                                 }
                             });
+                        // Read-Only?
+                        if( wysiwygeditor.readOnly() )
+                            show_popup = false;
                         // Fix type error - https://github.com/wysiwygjs/wysiwyg.js/issues/4
-                        if( ! rect )
+                        else if( ! rect )
                             show_popup = false;
                         // Force a special popup?
                         else if( $special_popup )
@@ -674,7 +688,8 @@
                 onClosepopup: function() {
                         autocomplete = null;
                     },
-                hijackContextmenu: (toolbar_position == 'selection')
+                hijackContextmenu: (toolbar_position == 'selection'),
+                readOnly: !!$textarea.attr( 'readonly' )
             };
             if( placeholder )
             {
@@ -835,4 +850,4 @@
         }
         return this;
     };
-})(window, document, jQuery);
+});

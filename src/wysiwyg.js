@@ -1,4 +1,15 @@
-(function(window, document, navigator, undefined){
+(function(factory) {
+    'use strict';
+    if (typeof define === 'function' && define.amd) {
+        define([], function(){
+            return factory(window, document);
+        });
+    } else if (typeof exports !== 'undefined') {
+        module.exports = factory(window, document);
+    } else {
+        window.wysiwyg = factory(window, document);
+    }
+})(function(window, document){
     'use strict';
 
     // http://stackoverflow.com/questions/97962/debounce-clicks-when-submitting-a-web-form
@@ -645,7 +656,7 @@
     };
 
     // Interface: Create wysiwyg
-    window.wysiwyg = function( option )
+    var wysiwyg = function( option )
     {
         // Options
         option = option || {};
@@ -659,6 +670,7 @@
         var option_onplaceholder = option.onPlaceholder || null;
         var option_onclosepopup = option.onClosepopup || null;
         var option_hijackcontextmenu = option.hijackContextmenu || false;
+        var option_readonly = option.readOnly || false;
 
         // Keep textarea if browser can't handle content-editable
         var is_textarea = option_element.nodeName == 'TEXTAREA' || option_element.nodeName == 'INPUT';
@@ -707,6 +719,19 @@
                     },
                     getSelectedHTML: dummy_null,
                     sync: dummy_this,
+                    readOnly: function( readonly )
+                    {
+                        // query read-only
+                        if( readonly === undefined )
+                            return node_textarea.hasAttribute ? node_textarea.hasAttribute('readonly') : 
+                                                                !!node_textarea.getAttribute('readonly'); // IE7
+                        // set read-only
+                        if( readonly )
+                            node_textarea.setAttribute( 'readonly', 'readonly' );
+                        else
+                            node_textarea.removeAttribute( 'readonly' );
+                        return this;
+                    },
                     // selection and popup
                     collapseSelection: dummy_this,
                     expandSelection: dummy_this,
@@ -756,7 +781,9 @@
         }
         else
             node_wysiwyg = option_element;
-        node_wysiwyg.setAttribute( 'contentEditable', 'true' ); // IE7 is case sensitive
+        // If not read-only
+        if( ! option_readonly )
+            node_wysiwyg.setAttribute( 'contentEditable', 'true' ); // IE7 is case sensitive
 
         // IE8 uses 'document' instead of 'window'
         // http://tanalin.com/en/articles/ie-version-js/
@@ -1184,18 +1211,18 @@
             return false;
         };
 
-        // Command structure
+        // Workaround IE11 - https://github.com/wysiwygjs/wysiwyg.js/issues/14
         var trailingDiv = null;
         var IEtrailingDIV = function()
         {
             // Detect IE - http://stackoverflow.com/questions/17907445/how-to-detect-ie11
             if( document.all || !!window.MSInputMethodContext )
             {
-                // Workaround IE11 - https://github.com/wysiwygjs/wysiwyg.js/issues/14
                 trailingDiv = document.createElement( 'DIV' );
                 node_wysiwyg.appendChild( trailingDiv );
             }
         };
+        // Command structure
         var callUpdates = function( selection_destroyed )
         {
             // Remove IE11 workaround
@@ -1243,6 +1270,19 @@
             {
                 if( syncTextarea )
                     syncTextarea();
+                return this;
+            },
+            readOnly: function( readonly )
+            {
+                // query read-only
+                if( readonly === undefined )
+                    return node_wysiwyg.hasAttribute ? !node_wysiwyg.hasAttribute('contentEditable') : 
+                                                       !node_wysiwyg.getAttribute('contentEditable'); // IE7
+                // set read-only
+                if( readonly )
+                    node_wysiwyg.removeAttribute( 'contentEditable' );
+                else
+                    node_wysiwyg.setAttribute( 'contentEditable', 'true' ); // IE7 is case sensitive
                 return this;
             },
             // selection and popup
@@ -1402,4 +1442,6 @@
             }
         };
     };
-})(window, document, navigator);
+
+    return wysiwyg;
+});
