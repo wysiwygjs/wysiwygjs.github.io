@@ -324,7 +324,7 @@
         {
             if( element.classList )
                 element.classList.remove( classname );
-        }
+        };
         var node_contenteditable = node_container.querySelector('[contenteditable=true]');
         if( ! node_contenteditable )
         {
@@ -401,7 +401,7 @@
                                 var charsToReplace = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' };
                                 return charsToReplace[tag] || tag;
                             });
-                        }
+                        };
                         commands.insertHTML( '<a href="' + htmlencode(url_scheme) + '">' + htmlencode(url) + '</a>' );
                     }
                 }
@@ -432,12 +432,12 @@
                 t = v * (1 - (1 - f) * s);
                 switch (i % 6)
                 {
-                    case 0: r = v, g = t, b = p; break;
-                    case 1: r = q, g = v, b = p; break;
-                    case 2: r = p, g = v, b = t; break;
-                    case 3: r = p, g = q, b = v; break;
-                    case 4: r = t, g = p, b = v; break;
-                    case 5: r = v, g = p, b = q; break;
+                    case 0: r = v; g = t; b = p; break;
+                    case 1: r = q; g = v; b = p; break;
+                    case 2: r = p; g = v; b = t; break;
+                    case 3: r = p; g = q; b = v; break;
+                    case 4: r = t; g = p; b = v; break;
+                    case 5: r = v; g = p; b = q; break;
                 }
                 var hr = Math.floor(r * 255).toString(16);
                 var hg = Math.floor(g * 255).toString(16);
@@ -506,78 +506,63 @@
                 {
                     if( ! orientation || orientation == 1 || orientation > 8 )
                         return callback( file.type, e.target.result );
-                    // normalize
-                    var img = new Image();
-                    img.src = e.target.result;
-                    img.onload = function()
+                    // Test if the browser supports automatic image orientation
+                    var testimg = document.createElement('img');
+                    testimg.onload = function()
                     {
-                        var width = img.width;
-                        var height = img.height;
-                        if( width > height )
+                        if( testimg.width === 2 && testimg.height === 3 )
+                            return callback( file.type, e.target.result );
+                        // normalize
+                        var img = new Image();
+                        img.onload = function()
                         {
-                            var max_width = 4096;
-                            if( width > max_width )
+                            var width = img.naturalWidth || img.width,
+                                height = img.naturalHeight || img.height,
+                                canvas = document.createElement('canvas'),
+                                ctx = canvas.getContext('2d');
+                            // set proper canvas dimensions before transform & export
+                            canvas.width = (orientation > 4) ? height : width;
+                            canvas.height = (orientation > 4) ? width : height;
+                            // transform context before drawing image
+                            switch( orientation )
                             {
-                                height *= max_width / width;
-                                width = max_width;
+                                case 2: ctx.transform( -1, 0, 0, 1, width, 0 );
+                                        break;
+                                case 3: ctx.transform( -1, 0, 0, -1, width, height );
+                                        break;
+                                case 4: ctx.transform( 1, 0, 0, -1, 0, height );
+                                        break;
+                                case 5: ctx.transform( 0, 1, 1, 0, 0, 0 );
+                                        break;
+                                case 6: ctx.transform( 0, 1, -1, 0, height, 0 );
+                                        break;
+                                case 7: ctx.transform( 0, -1, -1, 0, height, width );
+                                        break;
+                                case 8: ctx.transform( 0, -1, 1, 0, 0, width );
+                                        break;
                             }
-                        }
-                        else
-                        {
-                            var max_height = 4096;
-                            if( height > max_height )
-                            {
-                                width *= max_height / height;
-                                height = max_height;
-                            }
-                        }
-                        var canvas = document.createElement( 'canvas' );
-                        var ctx = canvas.getContext( '2d' );
-                        canvas.width = width;
-                        canvas.height = height;
-                        ctx.save();
-                        if( orientation > 4 )
-                        {
-                            canvas.width = height;
-                            canvas.height = width;
-                        }
-                        switch( orientation )
-                        {
-                            case 2: ctx.translate( width, 0 );
-                                    ctx.scale( -1, 1 );
-                                    break;
-                            case 3: ctx.translate( width, height );
-                                    ctx.rotate( Math.PI );
-                                    break;
-                            case 4: ctx.translate( 0, height );
-                                    ctx.scale( 1, -1 );
-                                    break;
-                            case 5: ctx.rotate( 0.5 * Math.PI );
-                                    ctx.scale( 1, -1 );
-                                    break;
-                            case 6: ctx.rotate( 0.5 * Math.PI );
-                                    ctx.translate( 0, -height );
-                                    break;
-                            case 7: ctx.rotate( 0.5 * Math.PI );
-                                    ctx.translate( width, -height );
-                                    ctx.scale( -1, 1 );
-                                    break;
-                            case 8: ctx.rotate( -0.5 * Math.PI );
-                                    ctx.translate( -width, 0 );
-                                    break;
-                        }
-                        ctx.drawImage( img, 0, 0, width, height );
-                        ctx.restore();
-                        var dataURL = canvas.toDataURL( 'image/jpeg', 0.99 );
-                        callback( file.type, dataURL );
-                    }
+                            // draw image
+                            ctx.drawImage( img, 0, 0, width, height );
+                            var dataURL = canvas.toDataURL( 'image/jpeg', 0.99 );
+                            callback( 'image/jpeg', dataURL );
+                        };
+                        img.src = e.target.result;
+                    };
+                    testimg.src = 'data:image/jpeg;base64,/9j/4QAiRXhpZgAATU0AKgAAAAgAAQESAAMAAAABAAYAAAA' +
+                                  'AAAD/2wCEAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBA' +
+                                  'QEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE' +
+                                  'BAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAf/AABEIAAIAAwMBEQACEQEDEQH/x' +
+                                  'ABRAAEAAAAAAAAAAAAAAAAAAAAKEAEBAQADAQEAAAAAAAAAAAAGBQQDCAkCBwEBAAAAAAA' +
+                                  'AAAAAAAAAAAAAABEBAAAAAAAAAAAAAAAAAAAAAP/aAAwDAQACEQMRAD8AG8T9NfSMEVMhQ' +
+                                  'voP3fFiRZ+MTHDifa/95OFSZU5OzRzxkyejv8ciEfhSceSXGjS8eSdLnZc2HDm4M3BxcXw' +
+                                  'H/9k=';
                 };
                 filereader.onerror = function( e )
                 {
                     callback();
                 };
                 filereader.readAsDataURL( file );
-            }
+            };
             if( ! window.DataView )
                 return normalize_dataurl();
 
@@ -656,7 +641,7 @@
                         });
                 })(i);
             }
-        };
+        }
 
         // open popup and apply position
         var popup_position = function( popup, left, top ) // left+top relative to container
@@ -667,7 +652,7 @@
             while( node )
             {
                 var node_style = getComputedStyle( node );
-                if( node_style['position'] != 'static' )
+                if( node_style.position != 'static' )
                     break;
                 left += node.offsetLeft;
                 top += node.offsetTop;
@@ -751,7 +736,8 @@
         };
 
         // Fill buttons (on toolbar or on selection)
-        var recent_selection_rect = null, recent_selection_link = null
+        var recent_selection_rect = null,
+            recent_selection_link = null;
         var fill_buttons = function( toolbar_container, selection_rect, buttons, hotkeys )
         {
             buttons.forEach( function(button)
@@ -1524,7 +1510,7 @@
                 execCommand( 'insertImage', dataurl );
             });
             return true;
-        };
+        }
         addEvent( node_contenteditable, 'paste', function( e )
         {
             if( paste_drop_file(e.clipboardData) )
